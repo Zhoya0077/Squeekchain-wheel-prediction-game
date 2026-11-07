@@ -1,0 +1,1007 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="color-scheme" content="light dark" />
+    <link rel="icon" href="data:," />
+    <title>Squeekchain Wheel Prediction Game</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Nunito:ital,wght@0,400;0,600;0,700;0,800;1,400&display=swap" rel="stylesheet" />
+    <style>
+      :root {
+        --bg: #fdf3e3;
+        --bg-soft: #fbeed3;
+        --card: #fffaf0;
+        --card-edge: #ecd9b8;
+        --ink: #33240f;
+        --ink-soft: #6d573a;
+        --accent: #e07b12;
+        --accent-strong: #b85e05;
+        --accent-soft: #fdeeda;
+        --good: #1e7d46;
+        --good-soft: #e2f3e7;
+        --bad: #b3372c;
+        --bad-soft: #fbe7e3;
+        --wheel-ring: #8a5a24;
+        --wheel-spoke: #c98d3d;
+        --shadow: 0 10px 28px rgba(90, 55, 8, 0.12);
+        color-scheme: light;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #1c130a;
+          --bg-soft: #271a0e;
+          --card: #2a1d10;
+          --card-edge: #4a3319;
+          --ink: #f7e8cf;
+          --ink-soft: #c8ab7f;
+          --accent: #ffb02e;
+          --accent-strong: #ffc95e;
+          --accent-soft: #3a2808;
+          --good: #5fce8d;
+          --good-soft: #173626;
+          --bad: #ff8a7a;
+          --bad-soft: #3d1d18;
+          --wheel-ring: #d99a45;
+          --wheel-spoke: #a06c2a;
+          --shadow: 0 10px 28px rgba(0, 0, 0, 0.45);
+          color-scheme: dark;
+        }
+      }
+      * { box-sizing: border-box; }
+      html { -webkit-text-size-adjust: 100%; }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--ink);
+        font-family: "Nunito", system-ui, sans-serif;
+        font-size: 16px;
+        line-height: 1.5;
+      }
+      h1, h2, h3, .display { font-family: "Baloo 2", "Nunito", sans-serif; }
+      a { color: var(--accent-strong); font-weight: 700; }
+      .wrap { max-width: 1060px; margin: 0 auto; padding: 20px 16px 48px; }
+
+      /* ---------- intro ---------- */
+      .intro { margin: 6px 0 18px; }
+      .intro h1 { font-size: clamp(1.7rem, 4.5vw, 2.6rem); line-height: 1.08; margin: 0 0 6px; font-weight: 800; }
+      .intro h1 .hl { color: var(--accent); }
+      .intro p { margin: 0; color: var(--ink-soft); max-width: 62ch; font-size: 1.02rem; }
+      .live-line { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 12px; font-size: 0.85rem; color: var(--ink-soft); }
+      .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--good); display: inline-block; }
+      .dot.stale { background: var(--bad); }
+      .dot.pulse { animation: pulse 1.6s ease-in-out infinite; }
+      @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.35; } }
+      @media (prefers-reduced-motion: reduce) { .dot.pulse { animation: none; } }
+      .retry-btn { font-family: "Baloo 2", sans-serif; font-weight: 700; font-size: 0.85rem; padding: 4px 14px; border-radius: 999px; border: 2px solid var(--accent); background: transparent; color: var(--accent-strong); cursor: pointer; }
+      .raw-panel { margin-top: 12px; background: var(--card); border: 1.5px solid var(--card-edge); border-radius: 14px; padding: 12px 14px; }
+      .raw-status { margin: 0 0 8px; font-size: 0.92rem; font-weight: 700; }
+      .raw-json { margin: 0; max-height: 240px; overflow: auto; background: var(--bg-soft); border: 1.5px solid var(--card-edge); border-radius: 10px; padding: 10px; font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-size: 0.74rem; line-height: 1.45; white-space: pre-wrap; overflow-wrap: anywhere; }
+      .raw-json:empty { display: none; }
+
+      /* ---------- layout ---------- */
+      .grid { display: grid; grid-template-columns: 1fr; gap: 18px; }
+      @media (min-width: 880px) {
+        .grid { grid-template-columns: 1.05fr 1fr; align-items: start; }
+      }
+      .card {
+        background: var(--card);
+        border: 1.5px solid var(--card-edge);
+        border-radius: 18px;
+        box-shadow: var(--shadow);
+        padding: 18px;
+      }
+      .card h2 { margin: 0 0 4px; font-size: 1.25rem; font-weight: 700; }
+      .card .sub { color: var(--ink-soft); font-size: 0.92rem; margin: 0 0 12px; }
+
+      /* ---------- wheel stage ---------- */
+      .stage { text-align: center; }
+      .wheel-box { position: relative; width: min(320px, 78vw); margin: 4px auto 6px; aspect-ratio: 1; }
+      .wheel-box svg { width: 100%; height: 100%; display: block; }
+      #wheelRotor { transform-origin: 160px 160px; }
+      .stand { width: 62%; height: 10px; margin: 0 auto; background: var(--wheel-ring); border-radius: 6px; opacity: 0.85; }
+      .stat-chips { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-top: 14px; }
+      .chip {
+        background: var(--bg-soft); border: 1.5px solid var(--card-edge);
+        border-radius: 999px; padding: 5px 12px; font-size: 0.85rem; font-weight: 700;
+        display: inline-flex; gap: 6px; align-items: baseline;
+      }
+      .chip .v { font-family: "Baloo 2", sans-serif; font-size: 1rem; color: var(--accent-strong); }
+      .chip.status-run .v { color: var(--good); }
+      .block-progress { margin-top: 16px; text-align: left; }
+      .block-progress .row { display: flex; justify-content: space-between; font-size: 0.88rem; font-weight: 700; }
+      .block-progress .row .muted { color: var(--ink-soft); font-weight: 600; }
+      .bar { height: 14px; border-radius: 999px; background: var(--bg-soft); border: 1.5px solid var(--card-edge); overflow: hidden; margin-top: 6px; }
+      .bar > div { height: 100%; width: 0%; background: var(--accent); border-radius: 999px; transition: width 0.8s ease; }
+
+      /* ---------- prediction ---------- */
+      .question { font-family: "Baloo 2", sans-serif; font-size: 1.3rem; font-weight: 700; line-height: 1.25; margin: 2px 0 2px; }
+      .question .blk { color: var(--accent-strong); }
+      .sides { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 14px 0 6px; }
+      .side-btn {
+        font-family: "Baloo 2", sans-serif; font-size: 1.35rem; font-weight: 800;
+        padding: 16px 8px; border-radius: 14px; cursor: pointer;
+        border: 2.5px solid var(--card-edge); background: var(--bg-soft); color: var(--ink);
+        transition: transform 0.08s ease, border-color 0.15s ease, background 0.15s ease;
+      }
+      .side-btn small { display: block; font-family: "Nunito", sans-serif; font-size: 0.78rem; font-weight: 700; color: var(--ink-soft); margin-top: 2px; }
+      .side-btn:active { transform: scale(0.97); }
+      .side-btn[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-soft); }
+      .side-btn.yes[aria-pressed="true"] { border-color: var(--good); background: var(--good-soft); }
+      .side-btn.no[aria-pressed="true"] { border-color: var(--bad); background: var(--bad-soft); }
+      .side-btn:disabled { opacity: 0.55; cursor: default; }
+      .bet-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 12px 0; }
+      .bet-row .lbl { font-weight: 800; font-size: 0.9rem; margin-right: 2px; }
+      .bet-chip {
+        font-family: "Baloo 2", sans-serif; font-weight: 700; font-size: 1rem;
+        padding: 7px 16px; border-radius: 999px; cursor: pointer;
+        border: 2px solid var(--card-edge); background: var(--card); color: var(--ink);
+      }
+      .bet-chip[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-soft); color: var(--accent-strong); }
+      .bet-chip:disabled { opacity: 0.45; cursor: default; }
+      .lock-btn {
+        width: 100%; font-family: "Baloo 2", sans-serif; font-size: 1.2rem; font-weight: 800;
+        padding: 14px; border: none; border-radius: 14px; cursor: pointer;
+        background: var(--accent); color: #fff8ec;
+      }
+      .lock-btn:disabled { opacity: 0.45; cursor: default; }
+      .lock-btn:not(:disabled):active { transform: scale(0.99); }
+      .hint { font-size: 0.85rem; color: var(--ink-soft); margin: 8px 0 0; min-height: 1.2em; }
+
+      .countdown { display: none; text-align: center; padding: 6px 0 2px; }
+      .countdown.on { display: block; }
+      .count-num { font-family: "Baloo 2", sans-serif; font-size: 3.4rem; font-weight: 800; line-height: 1; color: var(--accent-strong); }
+      .count-lbl { font-weight: 700; color: var(--ink-soft); font-size: 0.92rem; }
+      .count-bar { height: 10px; border-radius: 999px; background: var(--bg-soft); border: 1.5px solid var(--card-edge); overflow: hidden; margin: 10px 0 4px; }
+      .count-bar > div { height: 100%; width: 100%; background: var(--accent); }
+      .locked-summary { font-weight: 800; margin-top: 6px; }
+      .locked-summary .you-yes { color: var(--good); }
+      .locked-summary .you-no { color: var(--bad); }
+
+      .result { display: none; border-radius: 14px; padding: 14px 16px; margin-top: 12px; font-weight: 700; }
+      .result.on { display: block; }
+      .result.win { background: var(--good-soft); border: 2px solid var(--good); }
+      .result.lose { background: var(--bad-soft); border: 2px solid var(--bad); }
+      .result.void { background: var(--accent-soft); border: 2px solid var(--accent); }
+      .result .big { font-family: "Baloo 2", sans-serif; font-size: 1.35rem; font-weight: 800; display: block; margin-bottom: 2px; }
+      .again-btn {
+        margin-top: 12px; width: 100%; font-family: "Baloo 2", sans-serif; font-size: 1.05rem; font-weight: 800;
+        padding: 11px; border-radius: 12px; cursor: pointer;
+        border: 2px solid var(--accent); background: transparent; color: var(--accent-strong);
+      }
+
+      /* ---------- scoreboard ---------- */
+      .score-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 6px; }
+      @media (max-width: 520px) { .score-grid { grid-template-columns: repeat(2, 1fr); } }
+      .score-cell { background: var(--bg-soft); border: 1.5px solid var(--card-edge); border-radius: 14px; padding: 10px 6px; text-align: center; }
+      .score-cell .n { font-family: "Baloo 2", sans-serif; font-size: 1.55rem; font-weight: 800; line-height: 1.1; }
+      .score-cell .t { font-size: 0.76rem; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase; color: var(--ink-soft); }
+      .refill { display: none; margin-top: 8px; width: 100%; padding: 10px; border-radius: 12px; border: 2px dashed var(--accent); background: var(--accent-soft); color: var(--accent-strong); font-family: "Baloo 2", sans-serif; font-weight: 800; font-size: 1rem; cursor: pointer; }
+      .refill.on { display: block; }
+      .history { list-style: none; margin: 10px 0 0; padding: 0; }
+      .history li { display: flex; justify-content: space-between; gap: 10px; padding: 8px 2px; border-top: 1px solid var(--card-edge); font-size: 0.92rem; }
+      .history li:first-child { border-top: none; }
+      .history .w { color: var(--good); font-weight: 800; }
+      .history .l { color: var(--bad); font-weight: 800; }
+      .history .v { color: var(--ink-soft); font-weight: 800; }
+      .history .empty { color: var(--ink-soft); justify-content: flex-start; }
+
+      /* ---------- how / chain data ---------- */
+      .lower { display: grid; grid-template-columns: 1fr; gap: 18px; margin-top: 18px; }
+      @media (min-width: 880px) { .lower { grid-template-columns: 1fr 1fr; } }
+      .steps { margin: 0; padding-left: 20px; }
+      .steps li { margin-bottom: 8px; }
+      .kv { display: grid; grid-template-columns: auto 1fr; gap: 6px 14px; font-size: 0.94rem; }
+      .kv dt { color: var(--ink-soft); font-weight: 700; }
+      .kv dd { margin: 0; font-weight: 700; overflow-wrap: anywhere; }
+      .mono { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-size: 0.85em; font-weight: 600; }
+
+      footer { margin-top: 26px; padding-top: 16px; border-top: 1.5px solid var(--card-edge); color: var(--ink-soft); font-size: 0.9rem; }
+      footer .links { display: flex; flex-wrap: wrap; gap: 6px 18px; margin-bottom: 8px; }
+      .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <section class="intro">
+        <h1>Will the wheel finish the <span class="hl">next block</span> in time?</h1>
+        <p>
+          Squeekchain blocks are built by a real hamster running on a real wheel. Watch the live
+          wheel, call whether the next block completes within <strong>60 seconds</strong>, and get
+          settled by the chain's own live readings — no wallet, no cost, just your read of the hamster.
+        </p>
+        <div class="live-line" role="status">
+          <span class="dot pulse" id="feedDot" aria-hidden="true"></span>
+          <span id="feedText">Connecting to the live wheel feed…</span>
+          <button type="button" class="retry-btn" id="feedRetry" style="display:none">Retry now</button>
+          <button type="button" class="retry-btn" id="feedDirect" style="display:none">Check the raw feed</button>
+        </div>
+        <div class="raw-panel" id="rawPanel" style="display:none">
+          <p class="raw-status" id="rawStatus"></p>
+          <pre class="raw-json" id="rawJson"></pre>
+        </div>
+      </section>
+
+      <div class="grid">
+        <!-- ======== WHEEL STAGE ======== -->
+        <section class="card stage" aria-label="Live wheel">
+          <div class="wheel-box">
+            <svg viewBox="0 0 320 320" role="img" aria-label="Illustration of the Squeekchain hamster wheel">
+              <g id="wheelRotor">
+                <circle cx="160" cy="160" r="138" fill="none" stroke="var(--wheel-ring)" stroke-width="13" />
+                <circle cx="160" cy="160" r="118" fill="none" stroke="var(--wheel-spoke)" stroke-width="3" opacity="0.55" />
+                <g stroke="var(--wheel-spoke)" stroke-width="9" stroke-linecap="round">
+                  <line x1="160" y1="160" x2="160" y2="34" />
+                  <line x1="160" y1="160" x2="269" y2="223" />
+                  <line x1="160" y1="160" x2="51" y2="223" />
+                  <line x1="160" y1="160" x2="160" y2="286" />
+                  <line x1="160" y1="160" x2="51" y2="97" />
+                  <line x1="160" y1="160" x2="269" y2="97" />
+                </g>
+                <circle cx="160" cy="160" r="17" fill="var(--wheel-ring)" />
+              </g>
+              <!-- hamster -->
+              <g id="hamster" aria-hidden="true">
+                <ellipse cx="160" cy="252" rx="34" ry="24" fill="#d99a45" />
+                <circle cx="186" cy="238" r="16" fill="#e8ac58" />
+                <circle cx="196" cy="226" r="7" fill="#d99a45" />
+                <circle cx="196" cy="226" r="3.4" fill="#f3cf9a" />
+                <circle cx="190" cy="236" r="3" fill="#33240f" />
+                <circle cx="201" cy="240" r="2.2" fill="#b3372c" />
+                <ellipse cx="146" cy="246" rx="10" ry="7" fill="#f3cf9a" opacity="0.8" />
+                <g id="legs" stroke="#b5762a" stroke-width="5" stroke-linecap="round">
+                  <line x1="140" y1="272" x2="132" y2="284" />
+                  <line x1="172" y1="274" x2="180" y2="286" />
+                </g>
+              </g>
+            </svg>
+          </div>
+          <div class="stand" aria-hidden="true"></div>
+
+          <div class="stat-chips">
+            <span class="chip" id="chipStatus">Wheel <span class="v" id="stStatus">—</span></span>
+            <span class="chip">Speed <span class="v" id="stRpm">—</span></span>
+            <span class="chip">Pace <span class="v" id="stSpeed">—</span></span>
+            <span class="chip">Work done <span class="v" id="stWork">—</span></span>
+          </div>
+
+          <div class="block-progress">
+            <div class="row">
+              <span>Building block <span id="stNextBlock">#—</span></span>
+              <span class="muted" id="stProgressPct">—</span>
+            </div>
+            <div class="bar"><div id="stProgressBar"></div></div>
+          </div>
+        </section>
+
+        <!-- ======== PREDICTION ======== -->
+        <section class="card" aria-label="Make your prediction">
+          <h2>Make your call</h2>
+          <p class="sub">Points are play money for this session. A correct call pays back double your bet.</p>
+
+          <div id="pickArea">
+            <p class="question">Does block <span class="blk" id="qBlock">#—</span> complete within the next <span class="blk">60 seconds</span>?</p>
+            <p class="hint" id="paceHint" style="margin-top:0"></p>
+            <div class="sides">
+              <button type="button" class="side-btn yes" id="btnYes" aria-pressed="false">YES<small>The hamster delivers</small></button>
+              <button type="button" class="side-btn no" id="btnNo" aria-pressed="false">NO<small>It takes longer</small></button>
+            </div>
+            <div class="bet-row" role="group" aria-label="Bet size">
+              <span class="lbl">Bet</span>
+              <button type="button" class="bet-chip" data-bet="10" aria-pressed="true">10</button>
+              <button type="button" class="bet-chip" data-bet="25" aria-pressed="false">25</button>
+              <button type="button" class="bet-chip" data-bet="50" aria-pressed="false">50</button>
+              <span class="lbl" style="color:var(--ink-soft)">seeds</span>
+            </div>
+            <button type="button" class="lock-btn" id="btnLock" disabled>Pick YES or NO first</button>
+            <p class="hint" id="pickHint">Your call locks against the live block height the moment you confirm it.</p>
+          </div>
+
+          <div class="countdown" id="countArea" aria-live="polite">
+            <div class="count-num" id="countNum">60</div>
+            <div class="count-lbl" id="countLbl">seconds left for block <span id="countBlock">#—</span></div>
+            <div class="count-bar"><div id="countBarFill"></div></div>
+            <p class="locked-summary" id="lockedSummary"></p>
+            <p class="hint" id="settleHint">Watching the live feed — the round settles the moment the block lands, or when a fresh reading confirms the deadline passed.</p>
+          </div>
+
+          <div class="result" id="resultBox" aria-live="polite"></div>
+          <button type="button" class="again-btn" id="btnAgain" style="display:none">Call the next block</button>
+        </section>
+      </div>
+
+      <!-- ======== SCOREBOARD ======== -->
+      <section class="card" style="margin-top:18px" aria-label="Scoreboard">
+        <h2>Your session</h2>
+        <p class="sub">Kept in this tab only — refresh and the burrow resets.</p>
+        <div class="score-grid">
+          <div class="score-cell"><div class="n" id="scPoints">100</div><div class="t">Seeds</div></div>
+          <div class="score-cell"><div class="n" id="scStreak">0</div><div class="t">Win streak</div></div>
+          <div class="score-cell"><div class="n" id="scRecord">0 / 0</div><div class="t">Won / played</div></div>
+          <div class="score-cell"><div class="n" id="scBest">0</div><div class="t">Best streak</div></div>
+        </div>
+        <button type="button" class="refill" id="btnRefill">Out of seeds — take 100 more on the house</button>
+        <ul class="history" id="historyList">
+          <li class="empty">No rounds yet. The wheel is waiting for your first call.</li>
+        </ul>
+      </section>
+
+      <div class="lower">
+        <section class="card" aria-label="How settlement works">
+          <h2>How a round settles</h2>
+          <p class="sub">Every result comes from the public Squeekchain status feed — the same numbers shown on the wheel above.</p>
+          <ol class="steps">
+            <li><strong>Lock-in reading.</strong> When you confirm, the game records the current block height from the live feed.</li>
+            <li><strong>The 60-second window.</strong> If a later reading shows the block height has moved up, the block completed inside your window.</li>
+            <li><strong>Deadline check.</strong> The on-screen countdown runs a plain 60 seconds from the moment you lock in. When it runs out, the round settles on the first feed reading that arrives at or after the deadline — if the height still hasn't moved, the block missed the window. (Readings are judged by when they arrive, not by the feed's own timestamps: those can arrive out of order, and an earlier version that trusted them voided rounds the feed had actually answered.) Only if no reading at all arrives within 45 seconds past the deadline — the feed genuinely down — is the round voided and your bet refunded rather than left hanging.</li>
+            <li><strong>Payout.</strong> A correct call returns double your bet in seeds. A wrong one feeds your bet to the hamster.</li>
+          </ol>
+        </section>
+
+        <section class="card" aria-label="Live chain data">
+          <h2>From the chain, right now</h2>
+          <p class="sub">Straight from <span class="mono">api.squeekchain.com/v1/status</span>, refreshed every few seconds.</p>
+          <dl class="kv">
+            <dt>Current block</dt><dd id="kvHeight">—</dd>
+            <dt>Settled through round</dt><dd id="kvRound">—</dd>
+            <dt>Wheel reading at</dt><dd id="kvObserved">—</dd>
+            <dt>Feed generated at</dt><dd id="kvGenerated">—</dd>
+            <dt>Measurement source</dt><dd id="kvSource">—</dd>
+            <dt>Latest settlement</dt><dd id="kvTx">—</dd>
+          </dl>
+        </section>
+      </div>
+
+      <footer>
+        <div class="links">
+          <a href="https://squeekchain.com/genesis/code" target="_blank" rel="noopener">Squeekchain Genesis — submit a project</a>
+          <a href="https://api.squeekchain.com/v1/status" target="_blank" rel="noopener">Live status API</a>
+          <a href="https://squeekburrow.site/" target="_blank" rel="noopener">SqueekBurrow — the kart racer</a>
+        </div>
+        <p style="margin:0">Free to play. No wallet connection, no transactions, nothing to sign — predictions settle against the public wheel feed only.</p>
+      </footer>
+    </div>
+    <p class="sr-only" id="liveAnnouncer" aria-live="polite"></p>
+
+    <script>
+      (function () {
+        "use strict";
+        var API = "https://api.squeekchain.com/v1/status";
+        var WINDOW_MS = 60000;
+        var POLL_MS = 5000;
+        var SETTLE_POLL_MS = 2000;   // poll faster while a round is live
+        var FETCH_TIMEOUT_MS = 14000; // generous: routes race in parallel, so a slow route never delays a fast one
+        var VOID_GRACE_MS = 45000;   // past deadline + grace with no confirming reading: void & refund
+        var RECEIPT_GRACE_MS = 6000; // a reading showing the finished block that arrives within this long after the deadline still counts as in time (poll latency), as does one whose feed stamp proves it landed in time. NOTE: settlement is governed by when readings are RECEIVED, not by the feed's generatedAt stamp — that stamp is not monotonic (verified live: two API calls 6s apart returned stamps 13s apart in the wrong order, and relays cache copies), so stamping a round by it voided rounds the feed had actually answered.
+
+        var els = {
+          feedDot: document.getElementById("feedDot"),
+          feedText: document.getElementById("feedText"),
+          feedRetry: document.getElementById("feedRetry"),
+          feedDirect: document.getElementById("feedDirect"),
+          rawPanel: document.getElementById("rawPanel"),
+          rawStatus: document.getElementById("rawStatus"),
+          rawJson: document.getElementById("rawJson"),
+          rotor: document.getElementById("wheelRotor"),
+          hamster: document.getElementById("hamster"),
+          chipStatus: document.getElementById("chipStatus"),
+          stStatus: document.getElementById("stStatus"),
+          stRpm: document.getElementById("stRpm"),
+          stSpeed: document.getElementById("stSpeed"),
+          stWork: document.getElementById("stWork"),
+          stNextBlock: document.getElementById("stNextBlock"),
+          stProgressPct: document.getElementById("stProgressPct"),
+          stProgressBar: document.getElementById("stProgressBar"),
+          qBlock: document.getElementById("qBlock"),
+          paceHint: document.getElementById("paceHint"),
+          btnYes: document.getElementById("btnYes"),
+          btnNo: document.getElementById("btnNo"),
+          btnLock: document.getElementById("btnLock"),
+          pickHint: document.getElementById("pickHint"),
+          pickArea: document.getElementById("pickArea"),
+          countArea: document.getElementById("countArea"),
+          countNum: document.getElementById("countNum"),
+          countBlock: document.getElementById("countBlock"),
+          countBarFill: document.getElementById("countBarFill"),
+          lockedSummary: document.getElementById("lockedSummary"),
+          settleHint: document.getElementById("settleHint"),
+          resultBox: document.getElementById("resultBox"),
+          btnAgain: document.getElementById("btnAgain"),
+          scPoints: document.getElementById("scPoints"),
+          scStreak: document.getElementById("scStreak"),
+          scRecord: document.getElementById("scRecord"),
+          scBest: document.getElementById("scBest"),
+          btnRefill: document.getElementById("btnRefill"),
+          historyList: document.getElementById("historyList"),
+          kvHeight: document.getElementById("kvHeight"),
+          kvRound: document.getElementById("kvRound"),
+          kvObserved: document.getElementById("kvObserved"),
+          kvGenerated: document.getElementById("kvGenerated"),
+          kvSource: document.getElementById("kvSource"),
+          kvTx: document.getElementById("kvTx"),
+          announcer: document.getElementById("liveAnnouncer")
+        };
+
+        var snap = null;          // latest good snapshot
+        var feedOk = false;
+        var lastFailAt = 0;
+        var failCount = 0;
+        var lastGenMs = null;     // newest feed timestamp (generatedAt) seen so far — used only to keep the displayed feed times monotonic; readings stamped older than this are still accepted (see poll), because the stamp itself is not monotonic at the source
+
+        /* The direct route to api.squeekchain.com is blocked on some
+           networks and in-app browsers (the request never returns, or the
+           carrier/ISP intercepts the domain), even though the API itself is
+           up and sends open CORS headers. So every poll RACES several routes
+           in parallel — the direct URL plus public relays that fetch the
+           same URL server-side — and the first route to return a valid
+           reading wins. Racing matters: the public relays are flaky one at
+           a time (verified at build time: allorigins answered 500 after
+           ~16s, codetabs 522 after ~20s, corsproxy.io now demands an API
+           key; r.jina.ai returned the exact JSON in under a second), so a
+           sequential chain can burn half a minute on dead relays before
+           reaching a live one, while a race lands on the live one at once.
+           Whichever route last won is remembered for the status line. */
+        var ROUTES = [
+          { name: "direct", url: function () { return API; } },
+          { name: "relay", url: function () { return "https://r.jina.ai/" + API; } },
+          { name: "relay", url: function () { return "https://api.allorigins.win/raw?url=" + encodeURIComponent(API); } },
+          { name: "relay", url: function () { return "https://api.codetabs.com/v1/proxy?quest=" + encodeURIComponent(API); } },
+          { name: "relay", url: function () { return "https://api.cors.lol/?url=" + encodeURIComponent(API); } }
+        ];
+        var routeIdx = 0;         // route that won the last race
+        var viaRelay = false;
+
+        var game = {
+          points: 100,
+          streak: 0,
+          best: 0,
+          won: 0,
+          played: 0,
+          pick: null,             // 'yes' | 'no'
+          bet: 10,
+          round: null             // { pick, bet, baseHeight, targetBlock, deadline, lockedAtGen }
+        };
+
+        function fmtInt(n) {
+          return Number(n).toLocaleString("en-US");
+        }
+        function fmtTime(iso) {
+          if (!iso) return "—";
+          var d = new Date(iso);
+          if (isNaN(d.getTime())) return "—";
+          return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+        }
+        function announce(msg) { els.announcer.textContent = msg; }
+
+        /* ---------------- live feed ---------------- */
+        function parseSnapshot(j) {
+          var m = j.measurement || {};
+          var anchor = (j.builder && j.builder.anchor) || {};
+          var projected = (j.builder && j.builder.projected) || {};
+          var height = projected.blockHeight != null ? projected.blockHeight : anchor.blockHeight;
+          var progress = projected.blockProgress != null ? Number(projected.blockProgress) : null;
+          var settle = j.settlementQueue && j.settlementQueue.latestSubmission;
+          return {
+            status: m.coreStatus || "—",
+            freshness: m.freshness || "—",
+            rpm: (Number(m.rpmMilli) || 0) / 1000,
+            speedMm: Number(m.speedMmPerSecond) || 0,
+            work: m.cumulativeWorkUnits != null ? Number(m.cumulativeWorkUnits) : null,
+            provenance: m.provenance || "—",
+            observedAt: m.observedAt || null,
+            generatedAt: j.generatedAt || null,
+            genMs: j.generatedAt ? Date.parse(j.generatedAt) : null,
+            height: height != null ? Number(height) : null,
+            progress: progress,
+            settledRound: anchor.settledThroughRound != null ? anchor.settledThroughRound : "—",
+            lastTx: settle && settle.transactionHash ? settle.transactionHash : (anchor.transactionHash || null)
+          };
+        }
+
+        function renderSnapshot() {
+          if (!snap) return;
+          var running = snap.status && snap.status.toUpperCase() === "RUNNING";
+          els.stStatus.textContent = snap.status;
+          els.chipStatus.classList.toggle("status-run", running);
+          els.stRpm.textContent = snap.rpm ? snap.rpm.toFixed(1) + " rpm" : "0 rpm";
+          els.stSpeed.textContent = snap.speedMm ? (snap.speedMm / 1000).toFixed(2) + " m/s" : "0 m/s";
+          els.stWork.textContent = snap.work != null ? fmtInt(snap.work) + " units" : "—";
+          if (snap.height != null) {
+            els.stNextBlock.textContent = "#" + fmtInt(snap.height + 1);
+            if (!game.round) els.qBlock.textContent = "#" + fmtInt(snap.height + 1);
+            els.kvHeight.textContent = "#" + fmtInt(snap.height);
+          }
+          if (snap.progress != null) {
+            var pct = Math.max(0, Math.min(100, snap.progress / 10000000));
+            els.stProgressBar.style.width = pct.toFixed(1) + "%";
+            els.stProgressPct.textContent = pct.toFixed(1) + "% built";
+          }
+          els.kvRound.textContent = snap.settledRound !== "—" ? "Round " + fmtInt(snap.settledRound) : "—";
+          els.kvObserved.textContent = fmtTime(snap.observedAt);
+          els.kvGenerated.textContent = fmtTime(snap.generatedAt);
+          els.kvSource.textContent = snap.provenance + " sensor · feed " + snap.freshness;
+          if (snap.lastTx) {
+            els.kvTx.innerHTML = "";
+            var a = document.createElement("a");
+            a.href = "https://sepolia.etherscan.io/tx/" + snap.lastTx;
+            a.target = "_blank";
+            a.rel = "noopener";
+            a.className = "mono";
+            a.textContent = snap.lastTx.slice(0, 10) + "…" + snap.lastTx.slice(-6);
+            els.kvTx.appendChild(a);
+          }
+          var stale = snap.freshness !== "online";
+          els.feedDot.classList.toggle("stale", stale || !feedOk);
+          els.feedText.textContent = feedOk
+            ? (stale
+                ? "Feed connected, but the latest wheel reading is marked " + snap.freshness + "."
+                : "Live — wheel reading from " + fmtTime(snap.observedAt) + ", block #" + fmtInt(snap.height) + "." +
+                  (viaRelay ? " (The direct route to the feed is blocked on this connection, so readings arrive via a relay — same data, same source.)" : ""))
+            : "Feed hiccup — retrying with the last good reading.";
+          els.feedRetry.style.display = feedOk ? "none" : "";
+          els.feedDirect.style.display = feedOk ? "none" : "";
+          if (!game.round) {
+            els.paceHint.textContent = (running && snap.rpm > 0)
+              ? "The wheel is turning at " + snap.rpm.toFixed(1) + " rpm right now — weigh that pace against the block progress bar on the left."
+              : "Heads-up: the wheel is " + String(snap.status).toLowerCase() + " and the hamster is barely moving, so a block finishing inside 60 seconds would be a long shot.";
+          }
+        }
+
+        function checkSettlement() {
+          var r = game.round;
+          if (!r) return;
+          // Settlement is governed by RECEIPT time — when a reading actually
+          // arrives at this page, on the same local clock as the countdown —
+          // never by the feed's generatedAt stamp. That stamp is unreliable
+          // as a deadline arbiter: the API's own instances return stamps
+          // that jump backwards by tens of seconds between calls, and relay
+          // routes serve cached copies, so a stamp-gated round could be
+          // answered by the feed again and again yet never "confirm", and
+          // ended voided (that is exactly what voided the round reported on
+          // 2026-11-07: the feed was live the whole time). The stamp is kept
+          // only as secondary proof for a win that arrives late (below).
+          var now = Date.now();
+          if (snap && snap.height != null && snap.height > r.baseHeight) {
+            if (r.heightSeenAt == null) r.heightSeenAt = snap.receivedAt != null ? snap.receivedAt : now;
+            var inTime = r.heightSeenAt <= r.deadline + RECEIPT_GRACE_MS ||
+              (snap.genMs != null && snap.genMs <= r.deadlineServer);
+            settle(inTime, inTime
+              ? "Block #" + fmtInt(r.targetBlock) + " landed inside the window."
+              : "Block #" + fmtInt(r.targetBlock) + " did land — but the first reading showing it arrived after the deadline.");
+            return;
+          }
+          if (now >= r.deadline) {
+            // A reading RECEIVED at or after the deadline that still shows
+            // the old height confirms the miss — whatever stamp it carries.
+            // Rounds poll every couple of seconds, so this fires within a
+            // poll or two of the countdown ending.
+            if (snap && snap.receivedAt != null && snap.receivedAt >= r.deadline &&
+                snap.height != null && snap.height <= r.baseHeight) {
+              settle(false, "The deadline passed and block #" + fmtInt(r.targetBlock) + " still hadn't completed.");
+              return;
+            }
+            // Nothing has been received since the deadline at all (feed
+            // genuinely down). Past deadline + grace with still no reading,
+            // void the round and refund the bet so a round never hangs.
+            if (now >= r.deadline + VOID_GRACE_MS) {
+              voidRound("The feed couldn't confirm this round — no reading at all arrived after the deadline, so there's no honest way to settle it.");
+              return;
+            }
+            els.settleHint.textContent = feedOk
+              ? "Deadline passed — checking the feed every couple of seconds for the confirming reading…"
+              : "Deadline passed and the feed has gone quiet — still retrying; if no reading arrives within " + Math.round(VOID_GRACE_MS / 1000) + " seconds of the deadline, your bet is refunded.";
+          }
+        }
+
+        function voidRound(reason) {
+          var r = game.round;
+          if (!r) return;
+          game.round = null;
+          if (tickTimer) { clearInterval(tickTimer); tickTimer = null; }
+          game.points += r.bet;
+          renderScore();
+          els.countArea.classList.remove("on");
+          els.resultBox.className = "result on void";
+          els.resultBox.style.display = "block";
+          els.resultBox.innerHTML = "";
+          var big = document.createElement("span");
+          big.className = "big";
+          big.textContent = "Round voided — " + r.bet + " seeds refunded";
+          var why = document.createElement("span");
+          why.textContent = reason + " No win, no loss — your " + r.bet + " seeds are back in your pile.";
+          els.resultBox.appendChild(big);
+          els.resultBox.appendChild(why);
+          els.btnAgain.style.display = "block";
+          var empty = els.historyList.querySelector(".empty");
+          if (empty) empty.remove();
+          var li = document.createElement("li");
+          var left = document.createElement("span");
+          left.textContent = "Block #" + fmtInt(r.targetBlock) + " — you said " + r.pick.toUpperCase() + " · feed lost, round voided";
+          var right = document.createElement("span");
+          right.className = "v";
+          right.textContent = "±0";
+          li.appendChild(left);
+          li.appendChild(right);
+          els.historyList.insertBefore(li, els.historyList.firstChild);
+          while (els.historyList.children.length > 8) {
+            els.historyList.removeChild(els.historyList.lastChild);
+          }
+          announce(big.textContent + " " + why.textContent);
+        }
+
+        var pollTimer = null;
+        function schedulePoll(delay) {
+          if (pollTimer) clearTimeout(pollTimer);
+          pollTimer = setTimeout(poll, delay);
+        }
+        function fetchRouteText(route) {
+          var opts = { cache: "no-store" };
+          var timer = null;
+          if (window.AbortController) {
+            var ctl = new AbortController();
+            opts.signal = ctl.signal;
+            timer = setTimeout(function () { ctl.abort(); }, FETCH_TIMEOUT_MS);
+          }
+          var p;
+          try {
+            p = fetch(route.url(), opts);
+          } catch (e) {
+            p = fetch(route.url()); // very old webview choking on options — retry bare
+          }
+          return p.then(function (res) {
+            if (timer) clearTimeout(timer);
+            if (!res.ok) throw new Error("HTTP " + res.status);
+            return res.text();
+          }, function (err) {
+            if (timer) clearTimeout(timer);
+            throw err;
+          });
+        }
+        function extractJson(text) {
+          try { return JSON.parse(text); } catch (e) { /* fall through */ }
+          var a = text.indexOf("{"), b = text.lastIndexOf("}");
+          if (a >= 0 && b > a) return JSON.parse(text.slice(a, b + 1));
+          throw new Error(" response was not JSON");
+        }
+        function tryRoute(i) {
+          return fetchRouteText(ROUTES[i]).then(function (text) {
+            var j = extractJson(text);
+            if (!j || !j.measurement || !j.builder) throw new Error("unexpected payload");
+            return { json: j, route: i };
+          });
+        }
+        function fetchStatus() {
+          // Race every route at once; the first valid reading wins and the
+          // rest are ignored. Rejects only when ALL routes have failed.
+          return new Promise(function (resolve, reject) {
+            var remaining = ROUTES.length;
+            var settled = false;
+            ROUTES.forEach(function (route, i) {
+              tryRoute(i).then(function (r) {
+                if (settled) return;
+                settled = true;
+                routeIdx = r.route;
+                viaRelay = r.route > 0;
+                resolve(r.json);
+              }, function () {
+                remaining -= 1;
+                if (remaining === 0 && !settled) {
+                  settled = true;
+                  reject(new Error("every feed route failed"));
+                }
+              });
+            });
+          });
+        }
+        function poll() {
+          fetchStatus()
+            .then(function (j) {
+              var parsed = parseSnapshot(j);
+              feedOk = true;
+              failCount = 0;
+              // Relay routes cache responses and the API's own instances
+              // disagree by tens of seconds, so a reading can arrive whose
+              // generatedAt stamp is BEHIND the newest one already seen.
+              // An earlier version dropped those readings outright — but
+              // that froze the snapshot (and its receipt time) while such
+              // readings kept winning the route race, so settlement never
+              // got a post-deadline receipt and the round voided even
+              // though the feed was answering. Now every valid reading is
+              // accepted and re-stamps the receipt time (the height and
+              // work figures in it are the chain's current word as far as
+              // this page can know); only the displayed feed timestamps
+              // are kept monotonic, so the "generated at" line never
+              // visibly steps backwards.
+              if (parsed.genMs != null && lastGenMs != null && parsed.genMs < lastGenMs && snap) {
+                parsed.generatedAt = snap.generatedAt;
+                parsed.genMs = lastGenMs;
+              }
+              snap = parsed;
+              snap.receivedAt = Date.now();
+              if (snap.genMs != null && (lastGenMs == null || snap.genMs > lastGenMs)) lastGenMs = snap.genMs;
+              renderSnapshot();
+              checkSettlement();
+              schedulePoll(game.round ? SETTLE_POLL_MS : POLL_MS);
+            })
+            .catch(function () {
+              feedOk = false;
+              lastFailAt = Date.now();
+              failCount += 1;
+              if (!snap) {
+                els.feedDot.classList.add("stale");
+                els.feedText.textContent = "Can't reach the wheel feed (attempt " + failCount + ") — direct and relay routes are all failing on this connection right now. Retrying automatically; tap “Check the raw feed” to test the API from right here in the page and see the result.";
+                els.feedRetry.style.display = "";
+                els.feedDirect.style.display = "";
+              } else {
+                renderSnapshot();
+                if (game.round) {
+                  els.settleHint.textContent = "Feed hiccup — retrying every couple of seconds to confirm your round…";
+                }
+              }
+              checkSettlement();
+              schedulePoll(game.round ? SETTLE_POLL_MS : POLL_MS);
+            });
+        }
+        els.feedRetry.addEventListener("click", function () { poll(); });
+
+        /* "Check the raw feed" — the diagnostic used to be a target=_blank
+           link to the API, but the artifact runs in a sandboxed frame where
+           popup/new-tab navigation is silently swallowed, so on the user's
+           phone the tap did nothing at all. The check now runs in-page:
+           it fetches the raw feed from inside this page and prints the
+           verdict (and the JSON itself) right under the status line. */
+        els.feedDirect.addEventListener("click", function () {
+          els.rawPanel.style.display = "block";
+          els.rawStatus.textContent = "Checking the raw feed directly at api.squeekchain.com…";
+          els.rawJson.textContent = "";
+          var started = Date.now();
+          fetchRouteText(ROUTES[0]).then(function (text) {
+            var ms = Date.now() - started;
+            els.rawStatus.textContent = "The raw feed answered in " + ms + " ms — the API itself IS reachable from this phone. Here is exactly what it returned:";
+            try {
+              els.rawJson.textContent = JSON.stringify(JSON.parse(text), null, 2).slice(0, 6000);
+            } catch (e) {
+              els.rawJson.textContent = text.slice(0, 6000);
+            }
+            // The direct route just proved it works — refresh the game too.
+            poll();
+          }, function (err) {
+            els.rawStatus.textContent = "The direct route to the raw feed failed (" +
+              (err && err.message ? err.message : "network error") +
+              "). Trying the relay routes the game uses…";
+            fetchStatus().then(function (j) {
+              els.rawStatus.textContent = "The direct route is blocked from this phone, but a relay route answered — the feed data below came back fine, so the game should recover on its next automatic retry.";
+              try {
+                els.rawJson.textContent = JSON.stringify(j, null, 2).slice(0, 6000);
+              } catch (e) { els.rawJson.textContent = ""; }
+            }, function () {
+              els.rawStatus.textContent = "Every route failed — the direct API and all relays. From this phone right now the Squeekchain feed cannot be reached at all, which points at the connection or network blocking these hosts rather than the game. Try switching between Wi-Fi and mobile data, then tap Retry now.";
+              els.rawJson.textContent = "";
+            });
+          });
+        });
+
+        /* ---------------- wheel animation ---------------- */
+        var angle = 0;
+        var lastFrame = null;
+        var reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+        function spin(ts) {
+          if (lastFrame == null) lastFrame = ts;
+          var dt = Math.min(0.1, (ts - lastFrame) / 1000);
+          lastFrame = ts;
+          var rpm = snap ? snap.rpm : 0;
+          if (!reduceMotion && rpm > 0) {
+            angle = (angle + (rpm / 60) * 360 * dt) % 360;
+            els.rotor.setAttribute("transform", "rotate(" + angle.toFixed(2) + " 160 160)");
+            var bob = Math.sin(ts / 130) * 2.2;
+            els.hamster.setAttribute("transform", "translate(0 " + bob.toFixed(2) + ")");
+          } else if (!reduceMotion) {
+            // Wheel speed follows the real hamster, so at 0 rpm the wheel is
+            // honestly still — but the hamster breathes gently so the scene
+            // never looks frozen while it rests.
+            var breathe = Math.sin(ts / 950) * 0.9;
+            els.hamster.setAttribute("transform", "translate(0 " + breathe.toFixed(2) + ")");
+          }
+          requestAnimationFrame(spin);
+        }
+        requestAnimationFrame(spin);
+
+        /* ---------------- picking ---------------- */
+        function setPick(p) {
+          game.pick = p;
+          els.btnYes.setAttribute("aria-pressed", p === "yes" ? "true" : "false");
+          els.btnNo.setAttribute("aria-pressed", p === "no" ? "true" : "false");
+          updateLockBtn();
+        }
+        function updateLockBtn() {
+          if (!game.pick) {
+            els.btnLock.disabled = true;
+            els.btnLock.textContent = "Pick YES or NO first";
+            return;
+          }
+          if (!snap || snap.height == null) {
+            els.btnLock.disabled = true;
+            els.btnLock.textContent = failCount > 0 ? "Feed unreachable — retrying…" : "Waiting for the live feed…";
+            return;
+          }
+          if (game.bet > game.points) {
+            els.btnLock.disabled = true;
+            els.btnLock.textContent = "Not enough seeds for that bet";
+            return;
+          }
+          els.btnLock.disabled = false;
+          els.btnLock.textContent = "Lock it in — " + game.bet + " seeds on " + game.pick.toUpperCase();
+        }
+        els.btnYes.addEventListener("click", function () { setPick("yes"); });
+        els.btnNo.addEventListener("click", function () { setPick("no"); });
+        document.querySelectorAll(".bet-chip").forEach(function (chip) {
+          chip.addEventListener("click", function () {
+            game.bet = Number(chip.getAttribute("data-bet"));
+            document.querySelectorAll(".bet-chip").forEach(function (c) {
+              c.setAttribute("aria-pressed", c === chip ? "true" : "false");
+            });
+            updateLockBtn();
+          });
+        });
+
+        /* ---------------- round flow ---------------- */
+        var tickTimer = null;
+        function lockRound() {
+          if (!game.pick || !snap || snap.height == null) return;
+          game.points -= game.bet;
+          game.round = {
+            pick: game.pick,
+            bet: game.bet,
+            baseHeight: snap.height,
+            targetBlock: snap.height + 1,
+            lockedAt: Date.now(),
+            deadline: Date.now() + WINDOW_MS,
+            // Secondary win proof only: 60s after the lock-in reading was
+            // generated, on the feed's clock. The round is decided by
+            // receipt time (deadline above); this stamp can still rescue a
+            // win whose first showing arrived late but proves it landed in
+            // time. It never gates a miss and never voids a round.
+            deadlineServer: (snap.genMs != null ? snap.genMs : Date.now()) + WINDOW_MS,
+            polledAtDeadline: false,
+            overdueShown: false
+          };
+          renderScore();
+          els.pickArea.style.display = "none";
+          els.resultBox.className = "result";
+          els.resultBox.style.display = "none";
+          els.btnAgain.style.display = "none";
+          els.countArea.classList.add("on");
+          els.countBlock.textContent = "#" + fmtInt(game.round.targetBlock);
+          els.lockedSummary.innerHTML = "You called <span class=\"" + (game.round.pick === "yes" ? "you-yes" : "you-no") + "\">" +
+            game.round.pick.toUpperCase() + "</span> · " + game.round.bet + " seeds riding on it";
+          els.settleHint.textContent = "Watching the live feed — the round settles the moment the block lands, or when a fresh reading confirms the deadline passed.";
+          announce("Prediction locked: " + game.round.pick.toUpperCase() + " on block " + game.round.targetBlock + ", " + game.round.bet + " seeds.");
+          tick();
+          tickTimer = setInterval(tick, 200);
+          poll();
+        }
+        function tick() {
+          var r = game.round;
+          if (!r) return;
+          // The countdown runs on this device's own clock from the moment
+          // the call was locked — 60 real seconds, ticking down smoothly
+          // and never jumping back up. (It used to run on the feed's clock
+          // via a re-measured offset, so one stale cached reading could
+          // rewind it from 59 back to 60 and the round never ended.) The
+          // Settlement in checkSettlement runs on receipt time too.
+          var left = Math.max(0, r.deadline - Date.now());
+          els.countNum.textContent = Math.ceil(left / 1000);
+          els.countBarFill.style.width = (left / WINDOW_MS) * 100 + "%";
+          if (left <= 0) {
+            els.countNum.textContent = "0";
+            if (!r.overdueShown) {
+              r.overdueShown = true;
+              els.countLbl.textContent = "Time's up — confirming the result for block #" + fmtInt(r.targetBlock) + "…";
+            }
+            if (!r.polledAtDeadline) {
+              r.polledAtDeadline = true;
+              poll();
+            }
+            checkSettlement();
+          }
+        }
+        function settle(blockCompleted, reason) {
+          var r = game.round;
+          if (!r) return;
+          game.round = null;
+          if (tickTimer) { clearInterval(tickTimer); tickTimer = null; }
+          var correct = (r.pick === "yes") === blockCompleted;
+          game.played += 1;
+          var delta;
+          if (correct) {
+            delta = r.bet * 2;
+            game.points += delta;
+            game.won += 1;
+            game.streak += 1;
+            if (game.streak > game.best) game.best = game.streak;
+          } else {
+            delta = -r.bet;
+            game.streak = 0;
+          }
+          renderScore();
+          els.countArea.classList.remove("on");
+          els.resultBox.className = "result on " + (correct ? "win" : "lose");
+          els.resultBox.style.display = "block";
+          els.resultBox.innerHTML = "";
+          var big = document.createElement("span");
+          big.className = "big";
+          big.textContent = correct
+            ? (blockCompleted ? "The hamster delivered! +" + delta + " seeds" : "Called it — too slow, hamster. +" + delta + " seeds")
+            : (blockCompleted ? "It landed without you — −" + r.bet + " seeds" : "The block beat the clock — −" + r.bet + " seeds");
+          var why = document.createElement("span");
+          why.textContent = reason + " You called " + r.pick.toUpperCase() + " on block #" + fmtInt(r.targetBlock) + ".";
+          els.resultBox.appendChild(big);
+          els.resultBox.appendChild(why);
+          els.btnAgain.style.display = "block";
+          addHistory(r, blockCompleted, correct, delta);
+          announce(big.textContent + " " + why.textContent);
+        }
+        function addHistory(r, completed, correct, delta) {
+          var empty = els.historyList.querySelector(".empty");
+          if (empty) empty.remove();
+          var li = document.createElement("li");
+          var left = document.createElement("span");
+          left.textContent = "Block #" + fmtInt(r.targetBlock) + " — you said " + r.pick.toUpperCase() +
+            (completed ? " · landed in time" : " · missed the window");
+          var right = document.createElement("span");
+          right.className = correct ? "w" : "l";
+          right.textContent = correct ? "+" + delta : "−" + r.bet;
+          li.appendChild(left);
+          li.appendChild(right);
+          els.historyList.insertBefore(li, els.historyList.firstChild);
+          while (els.historyList.children.length > 8) {
+            els.historyList.removeChild(els.historyList.lastChild);
+          }
+        }
+        els.btnLock.addEventListener("click", lockRound);
+        els.btnAgain.addEventListener("click", function () {
+          game.pick = null;
+          els.btnYes.setAttribute("aria-pressed", "false");
+          els.btnNo.setAttribute("aria-pressed", "false");
+          els.resultBox.className = "result";
+          els.resultBox.style.display = "none";
+          els.btnAgain.style.display = "none";
+          els.pickArea.style.display = "block";
+          if (snap && snap.height != null) els.qBlock.textContent = "#" + fmtInt(snap.height + 1);
+          updateLockBtn();
+          window.scrollTo({ top: 0, behavior: "smooth" });
+        });
+
+        /* ---------------- scoreboard ---------------- */
+        function renderScore() {
+          els.scPoints.textContent = game.points;
+          els.scStreak.textContent = game.streak;
+          els.scRecord.textContent = game.won + " / " + game.played;
+          els.scBest.textContent = game.best;
+          var broke = game.points < 10 && !game.round;
+          els.btnRefill.classList.toggle("on", broke);
+          document.querySelectorAll(".bet-chip").forEach(function (c) {
+            c.disabled = Number(c.getAttribute("data-bet")) > game.points && !game.round;
+          });
+          if (!game.round) updateLockBtn();
+        }
+        els.btnRefill.addEventListener("click", function () {
+          game.points += 100;
+          game.bet = 10;
+          document.querySelectorAll(".bet-chip").forEach(function (c) {
+            c.setAttribute("aria-pressed", c.getAttribute("data-bet") === "10" ? "true" : "false");
+          });
+          renderScore();
+          announce("100 fresh seeds added. Balance: " + game.points + ".");
+        });
+
+        /* ---------------- go ---------------- */
+        renderScore();
+        poll();
+        setInterval(function () { updateLockBtn(); }, 3000);
+      })();
+    </script>
+  </body>
+</html>
